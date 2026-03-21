@@ -9,4 +9,5 @@ type Message struct {
 type Typing struct {
 	Typing bool
 	From   string
+	RoomID string
 }
