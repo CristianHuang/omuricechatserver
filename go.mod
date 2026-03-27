@@ -1,4 +1,4 @@
-module kneticchat.com/m
+module github.com/cristianhuang/omuricechatserver
 
 go 1.25.5
 

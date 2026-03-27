@@ -1,51 +1,17 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
-
+	"github.com/cristianhuang/omuricechatserver/internal/core/domain"
+	"github.com/cristianhuang/omuricechatserver/internal/interfaces/websocket"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 )
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
 
 func main() {
 	r := gin.Default()
+	hub := domain.NewHub()
+	go hub.Run()
 
-	r.GET("/ws", ws)
+	r.GET("/ws", func(c *gin.Context) { websocket.Ws(hub, c) })
 
 	r.Run(":8080")
-}
-
-func ws(c *gin.Context) {
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-	if err != nil {
-		fmt.Println("Error upgrade:", err)
-		return
-	}
-	defer conn.Close()
-
-	fmt.Println("¡Celular conectado!")
-
-	for {
-		messageType, p, err := conn.ReadMessage()
-		if err != nil {
-			fmt.Println("Cliente desconectado")
-			break
-		}
-
-		fmt.Printf("Recibido: %s\n", string(p))
-
-		response := []byte("Servidor dice: Recibí: " + string(p))
-		if err := conn.WriteMessage(messageType, response); err != nil {
-			break
-		}
-	}
 }
