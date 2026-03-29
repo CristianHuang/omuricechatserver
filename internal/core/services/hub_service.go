@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -30,10 +31,21 @@ func (h *HubService) HandleConnection(conn input.Connection) {
 			fmt.Println("Error reading message: ", err)
 			break
 		}
-		err = json.Unmarshal(m, &msg)
-		if err != nil {
-			fmt.Println("Error unmarshing message: ", err)
-			break
+		decoder := json.NewDecoder(bytes.NewReader(m))
+		decoder.DisallowUnknownFields()
+		if err = decoder.Decode(&msg); err != nil {
+			errMsg, _ := json.Marshal(map[string]string{
+				"error": "invalid format message: " + err.Error(),
+			})
+			conn.WriteMessage(1, errMsg)
+			continue
+		}
+		if msg.SenderID == "" || msg.Message == nil {
+			errMsg, _ := json.Marshal(map[string]string{
+				"error": "missing required fields: sender_id, message",
+			})
+			conn.WriteMessage(1, errMsg)
+			continue
 		}
 
 		h.hub.Broadcast <- domain.MessageSend{SenderID: msg.SenderID, Message: msg.Message, SentAt: time.Now().String()}
