@@ -2,20 +2,17 @@ package main
 
 import (
 	"github.com/cristianhuang/omuricechatserver/internal/adapters/handlers/websocket"
-	"github.com/cristianhuang/omuricechatserver/internal/core/domain"
 	"github.com/cristianhuang/omuricechatserver/internal/core/services"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	r := gin.Default()
-	hub := domain.NewHub()
-	go hub.Run()
 
-	hubService := services.NewHubService(hub)
-	wsHandler := websocket.NewWsHandler(hubService)
+	roomService := services.NewRoomService()
+	wsHandler := websocket.NewWsHandler(roomService)
 
-	r.GET("/ws", wsHandler.Ws)
+	r.GET("/chat/room/:id", wsHandler.HandleRoom)
 
 	r.Run(":8080")
 }

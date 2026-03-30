@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/cristianhuang/omuricechatserver/internal/core/ports/input"
+	"github.com/cristianhuang/omuricechatserver/internal/core/domain"
+	"github.com/cristianhuang/omuricechatserver/internal/core/services"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
@@ -18,19 +19,31 @@ var upgrader = websocket.Upgrader{
 }
 
 type WsHandler struct {
-	hubServices input.HubService
+	hubStruct    *domain.Hub
+	roomServices services.RoomServiceInterface
 }
 
-func NewWsHandler(hubService input.HubService) *WsHandler {
-	return &WsHandler{hubServices: hubService}
+func NewWsHandler(roomService services.RoomServiceInterface) *WsHandler {
+	return &WsHandler{
+		hubStruct:    domain.NewHub(),
+		roomServices: roomService,
+	}
 }
 
-func (h *WsHandler) Ws(c *gin.Context) {
+func (w *WsHandler) HandleRoom(c *gin.Context) {
+	id := c.Param("id")
+
+	room, ok := w.hubStruct.GetRoom(id)
+
+	if !ok {
+		room = w.hubStruct.CreateRoom(id)
+	}
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		fmt.Println("Error upgrade:", err)
 		return
 	}
-	h.hubServices.HandleConnection(&WsConn{conn})
+	w.roomServices.HandleConnection(&WsConn{conn}, room)
+
 }

@@ -10,17 +10,16 @@ import (
 	"github.com/cristianhuang/omuricechatserver/internal/core/ports/input"
 )
 
-type HubService struct {
-	hub *domain.Hub
+type RoomService struct{}
+
+func NewRoomService() *RoomService {
+	return &RoomService{}
 }
 
-func NewHubService(hub *domain.Hub) *HubService {
-	return &HubService{hub: hub}
-}
+func (r *RoomService) HandleConnection(conn input.Connection, room *domain.Room) {
 
-func (h *HubService) HandleConnection(conn input.Connection) {
 	client := &domain.Client{Conn: conn, Send: make(chan []byte, 256)}
-	h.hub.Register <- client
+	room.Register <- client
 
 	go client.Writer()
 
@@ -40,15 +39,19 @@ func (h *HubService) HandleConnection(conn input.Connection) {
 			conn.WriteMessage(1, errMsg)
 			continue
 		}
-		if msg.SenderID == "" || msg.Message == nil {
+		if msg.ID == "" || msg.Message == nil {
 			errMsg, _ := json.Marshal(map[string]string{
-				"error": "missing required fields: sender_id, message",
+				"error": "missing required fields: id, message",
 			})
 			conn.WriteMessage(1, errMsg)
 			continue
 		}
 
-		h.hub.Broadcast <- domain.MessageSend{SenderID: msg.SenderID, Message: msg.Message, SentAt: time.Now().String()}
+		room.Broadcast <- domain.MessageSend{ID: msg.ID, Message: msg.Message, SentAt: time.Now().String()}
 	}
-	h.hub.Unregister <- client
+	room.Unregister <- client
+}
+
+type RoomServiceInterface interface {
+	HandleConnection(conn input.Connection, room *domain.Room)
 }

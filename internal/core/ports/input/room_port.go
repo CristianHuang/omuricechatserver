@@ -1,14 +1,12 @@
 package input
 
-import "time"
+import (
+	"time"
+)
 
 type Connection interface {
 	ReadMessage() ([]byte, error)
 	WriteMessage(int, []byte) error
 	SetWriteDeadline(time.Time)
 	Close() error
-}
-
-type HubService interface {
-	HandleConnection(conn Connection)
 }

@@ -1,48 +1,35 @@
 package domain
 
 import (
-	"encoding/json"
+	"sync"
 )
 
 type Hub struct {
-	Clients    map[*Client]bool
-	Id         chan int
-	Broadcast  chan MessageSend
-	Register   chan *Client
-	Unregister chan *Client
+	Rooms map[string]*Room
+	mu    sync.RWMutex
 }
 
 func NewHub() *Hub {
 	return &Hub{
-		Broadcast:  make(chan MessageSend),
-		Register:   make(chan *Client),
-		Unregister: make(chan *Client),
-		Clients:    make(map[*Client]bool),
+		Rooms: make(map[string]*Room),
 	}
 }
 
-func (h *Hub) Run() {
-	for {
-		select {
-		case client := <-h.Register:
-			h.Clients[client] = true
-		case client := <-h.Unregister:
-			if _, ok := h.Clients[client]; ok {
-				delete(h.Clients, client)
-				close(client.Send)
-				client.Conn.Close()
-			}
-		case message := <-h.Broadcast:
-			msg, _ := json.Marshal(message)
-			for client := range h.Clients {
-				select {
-				case client.Send <- msg:
-				default:
-					close(client.Send)
-					client.Conn.Close()
-					delete(h.Clients, client)
-				}
-			}
-		}
-	}
+func (h *Hub) CreateRoom(id string) *Room {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	room := NewRoom(id)
+
+	h.Rooms[id] = room
+	go room.Run()
+	return room
+}
+
+func (h *Hub) GetRoom(id string) (*Room, bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	room, ok := h.Rooms[id]
+	return room, ok
 }
